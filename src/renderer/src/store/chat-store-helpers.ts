@@ -614,14 +614,13 @@ export function forgetCodeWorkspaceRoot(
 
 export function mergeComposerPickList(upstreamOk: boolean, upstreamIds: string[]): string[] {
   const ordered = new Set<string>()
-  if (upstreamOk && upstreamIds.length > 0) {
+  for (const id of DEFAULT_COMPOSER_MODEL_IDS) {
+    ordered.add(id)
+  }
+  if (upstreamOk) {
     for (const id of upstreamIds) {
       const trimmed = id.trim()
-      if (trimmed) ordered.add(trimmed)
-    }
-  } else {
-    for (const id of DEFAULT_COMPOSER_MODEL_IDS) {
-      ordered.add(id)
+      if (trimmed && trimmed !== 'auto') ordered.add(trimmed)
     }
   }
   return [...ordered].sort((a, b) => a.localeCompare(b))
@@ -634,28 +633,16 @@ export function fallbackComposerModel(
 ): string {
   const allowed = new Set(pickList)
   const preferred = runtimeDefault.trim()
-  if (preferred && allowed.has(preferred)) return preferred
-  const firstProviderModel = firstSelectableProviderModel(pickList, modelGroups, runtimeDefault)
+  if (preferred && preferred.toLowerCase() !== 'auto' && allowed.has(preferred)) return preferred
+  const firstProviderModel = firstSelectableProviderModel(pickList, modelGroups)
   if (firstProviderModel) return firstProviderModel
-  return pickList[0] ?? ''
+  return DEFAULT_COMPOSER_MODEL_IDS.find((id) => allowed.has(id)) ?? pickList[0] ?? ''
 }
 
 function firstSelectableProviderModel(
   pickList: readonly string[],
-  modelGroups: readonly ModelProviderModelGroup[],
-  runtimeDefault = ''
+  modelGroups: readonly ModelProviderModelGroup[]
 ): string {
-  const preferred = runtimeDefault.trim()
-  if (preferred) {
-    for (const group of modelGroups) {
-      if (group.modelIds.some((id) => id.trim().toLowerCase() === preferred.toLowerCase())) {
-        for (const modelId of group.modelIds) {
-          const model = modelId.trim()
-          if (model && composerModelSelectable(pickList, modelGroups, model)) return model
-        }
-      }
-    }
-  }
   for (const group of modelGroups) {
     for (const modelId of group.modelIds) {
       const model = modelId.trim()
