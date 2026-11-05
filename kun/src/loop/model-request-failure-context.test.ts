@@ -24,6 +24,34 @@ describe('model request failure context', () => {
     })
   })
 
+  it('forwards the provider reset instant for a busy 503 so the UI can show an ETA', () => {
+    expect(modelRequestFailureContext({
+      request,
+      code: 'no_providers_configured',
+      failure: {
+        category: 'unavailable', reason: 'unavailable', responseReceived: true, httpStatus: 503,
+        providerCode: 'no_providers_configured', providerId: 'freellm-proxy',
+        modelId: 'auto', retryAfterMs: 29_001, resetAt: '2030-01-01T00:00:00.000Z',
+        failoverAllowed: true
+      }
+    })).toEqual({
+      requestState: 'provider_responded', providerId: 'freellm-proxy', model: 'auto',
+      httpStatus: 503, providerCode: 'no_providers_configured', category: 'unavailable',
+      reason: 'unavailable', retryAfterMs: 29_001, resetAt: '2030-01-01T00:00:00.000Z'
+    })
+  })
+
+  it('drops the reset instant when the request was never sent', () => {
+    expect(modelRequestFailureContext({
+      request, code: 'provider_configuration_changed',
+      failure: {
+        category: 'request', reason: 'request', requestSent: false,
+        responseReceived: false, httpStatus: 503, providerCode: 'provider_configuration_changed',
+        resetAt: '2030-01-01T00:00:00.000Z', failoverAllowed: false
+      }
+    })).not.toHaveProperty('resetAt')
+  })
+
   it('classifies transport failures without claiming a provider response', () => {
     expect(modelRequestFailureContext({
       request, code: 'model_provider_unreachable',

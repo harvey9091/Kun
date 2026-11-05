@@ -96,6 +96,9 @@ export async function classifyCompatHttpError(input: {
   if (input.status === 429) {
     return { message: `model request was rate limited (HTTP 429): ${body}`, code: 'rate_limited', failure }
   }
+  if (providerCode === 'no_providers_configured' || /no_providers_configured/i.test(input.text)) {
+    return { message: `provider unavailable / no usable provider key configured: ${body}`, code: 'no_providers_configured', failure }
+  }
   if (input.status >= 500 && isDeepSeekHost(input.baseUrl)) {
     const probe = await probeDeepSeekReachable({ baseUrl: input.baseUrl, fetchImpl: input.fetchImpl })
     return {

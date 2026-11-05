@@ -166,6 +166,8 @@ export type CoreModelRequestFailureJson = {
   providerCode?: string
   category?: 'network' | 'timeout' | 'authentication' | 'quota' | 'rate_limit' | 'unavailable' | 'model_not_found' | 'request' | 'capability' | 'unknown'
   retryAfterMs?: number
+  /** Provider-declared reset instant (ISO 8601), when known. */
+  resetAt?: string
 }
 
 export type CoreTurnJson = {

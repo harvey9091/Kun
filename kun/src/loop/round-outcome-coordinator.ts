@@ -1,4 +1,6 @@
 import type { ToolResultTurnItem } from '../contracts/items.js'
+import type { ToolCallLike } from '../ports/tool-host.js'
+import { makeToolCallItem } from '../domain/item.js'
 import { GraphPlanningDraftV1Schema } from '../contracts/graph-planning.js'
 import { CREATE_PLAN_TOOL_NAME } from '../adapters/tool/create-plan-tool.js'
 import { GRAPH_DEFINE_PLAN_TOOL_NAME } from '../adapters/tool/graph-define-plan-tool.js'
@@ -38,6 +40,15 @@ export {
  */
 export class RoundOutcomeCoordinator extends RoundOutcomeRecoveryPhase {
   private async recoverPrivatePublication(input: RoundOutcomeInput): Promise<ModelRoundOutcome> {
+    // A clean text-only completion (no tool call, no stream error, non-empty text) is
+    // already a complete user-facing answer. Publish it immediately through the same
+    // send_im_message tool the model would have called, instead of spending an extra
+    // full model call on a nudge. Empty text and rounds that already made (unaccepted)
+    // tool calls still use the bounded nudge below.
+    const finalSnapshot = input.streamed.kind === 'completed' ? input.streamed.snapshot : null
+    if (finalSnapshot && finalSnapshot.toolCalls.length === 0 && finalSnapshot.text.trim().length > 0) {
+      return this.publishPlainTextAsFinal(input, finalSnapshot.text.trim())
+    }
     const steps = (this.imPublicationRecoveryByTurn.get(input.turnId) ?? 0) + 1
     if (steps <= IM_PUBLICATION_MAX_RECOVERY_STEPS) {
       this.imPublicationRecoveryByTurn.set(input.turnId, steps)
@@ -48,8 +59,66 @@ export class RoundOutcomeCoordinator extends RoundOutcomeRecoveryPhase {
       })
       return 'continue'
     }
+    // Failing branch only: log a snapshot summary. `snapshot` exists solely on the
+    // `completed`/`tool_calls` variants, so narrow before reading it.
+    const debugSnapshot = input.streamed.kind === 'completed' || input.streamed.kind === 'tool_calls'
+      ? input.streamed.snapshot
+      : null
+    console.error('[im_final_missing]', 'turn=' + input.turnId, 'streamed=' + input.streamed.kind, 'stopReason=' + (debugSnapshot?.stopReason ?? 'none'), 'textLen=' + (debugSnapshot?.text?.length ?? 0))
     return this.failHardRequiredTool(input, 'im_final_missing',
       'The private Agent could not publish a complete response after two attempts. No pending work was replayed.')
+  }
+  /**
+   * Publishes plain assistant text as a final IM bubble through the same
+   * send_im_message tool that the model would have called. Invoked on the first
+   * clean text-only answer — no tool call and no stream error — so the already
+   * generated response reaches the user without an extra nudge model call. Empty
+   * text, transport errors, and cases where a tool call was made still fail as before.
+   */
+  private async publishPlainTextAsFinal(
+    input: RoundOutcomeInput,
+    text: string
+  ): Promise<ModelRoundOutcome> {
+    const syntheticCall: ToolCallLike = {
+      callId: `fallback_pub_${input.turnId}`,
+      toolName: SEND_IM_MESSAGE_TOOL_NAME,
+      arguments: { text, phase: 'final' }
+    }
+    // Record the assistant tool_call first, exactly as the model round does for a
+    // real call. The dispatcher never emits tool_call records and ToolExecutionService
+    // updates this item by id (`item_tool_<turnId>_<callId>`), so without it the
+    // published result would be an orphan tool_result with no matching call — which the
+    // provider projector has to drop, breaking the tool_call/tool_result pairing.
+    await this.deps.turns.applyItem(input.threadId, makeToolCallItem({
+      id: `item_tool_${input.turnId}_${syntheticCall.callId}`,
+      turnId: input.turnId,
+      threadId: input.threadId,
+      callId: syntheticCall.callId,
+      toolName: syntheticCall.toolName,
+      toolKind: input.toolKinds.get(SEND_IM_MESSAGE_TOOL_NAME) ?? 'tool_call',
+      arguments: syntheticCall.arguments,
+      status: 'running'
+    }))
+    const dispatched = await this.deps.dispatchToolCalls(
+      this.toolDispatchInput(input, [syntheticCall], true)
+    )
+    if (dispatched === 'aborted') return 'aborted'
+    if (dispatched === 'budget_exhausted') return 'failed'
+    const settled = await this.deps.sessionStore.loadItems(input.threadId)
+    const published = settled.some((item) =>
+      item.turnId === input.turnId &&
+      item.kind === 'tool_result' &&
+      item.callId === syntheticCall.callId &&
+      item.isError !== true &&
+      typeof item.output === 'object' && item.output !== null &&
+      (item.output as { accepted?: unknown }).accepted === true)
+    if (!published) {
+      console.error('[im_final_missing]', 'turn=' + input.turnId, 'fallback_publish_not_accepted', 'textLen=' + text.length)
+      return this.failHardRequiredTool(input, 'im_final_missing',
+        'The private Agent fallback publish was not accepted by the tool host. No pending work was replayed.')
+    }
+    this.imPublicationRecoveryByTurn.delete(input.turnId)
+    return 'stop'
   }
   /**
    * A room step's deliverable is its accepted scoped submission

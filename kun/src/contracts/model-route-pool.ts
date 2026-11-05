@@ -196,6 +196,7 @@ export type ModelFailureReason =
   | 'auth'
   | 'model'
   | 'request'
+  | 'unavailable'
   | 'other'
 
 export type ModelFailureMetadata = {

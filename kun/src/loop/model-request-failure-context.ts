@@ -45,7 +45,8 @@ export function modelRequestFailureContext(input: {
       : {}),
     ...(failure?.category ? { category: failure.category } : preflightFailure ? { category: 'authentication' } : {}),
     ...(failure?.reason ? { reason: failure.reason } : {}),
-    ...(failure?.retryAfterMs !== undefined ? { retryAfterMs: failure.retryAfterMs } : {})
+    ...(failure?.retryAfterMs !== undefined ? { retryAfterMs: failure.retryAfterMs } : {}),
+    ...(!localNotSent && failure?.resetAt ? { resetAt: failure.resetAt } : {})
   }
 }
 

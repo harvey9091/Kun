@@ -498,6 +498,35 @@ export class CompatModelClient extends CompatModelStreamingClient implements Mod
         model: requestModel
       })
       const classified = await this.classifyHttpError(response.status, text, response.headers.get('retry-after'), response.headers)
+      // A free-tier proxy that owns its own model routing answers a concrete
+      // model it cannot serve with HTTP 503 / `no_providers_configured` and
+      // `failoverAllowed: true` — it is explicitly inviting a different route.
+      // When the composer pinned a specific model the proxy does not have, and
+      // the request carried no alternatives to fail over to, re-issue exactly
+      // once letting the provider pick its own default (`auto`). The proxy then
+      // routes to a usable upstream instead of surfacing the 503. If that also
+      // fails, fall through and show the original actionable error card.
+      if (
+        classified.code === 'no_providers_configured' &&
+        classified.failure.failoverAllowed !== false &&
+        requestModel &&
+        requestModel.toLowerCase() !== 'auto' &&
+        (request.failover?.alternatives ?? 0) === 0
+      ) {
+        const autoStream = this.streamInner({ ...request, model: 'auto' }, round)
+        const autoIterator = autoStream[Symbol.asyncIterator]()
+        const first = await autoIterator.next()
+        const firstChunk = first.done ? undefined : first.value
+        if (firstChunk && firstChunk.kind !== 'error') {
+          yield firstChunk
+          while (true) {
+            const next = await autoIterator.next()
+            if (next.done) break
+            yield next.value
+          }
+          return
+        }
+      }
       yield {
         kind: 'error',
         message: `${classified.message}${rateLimitRecoverySuffix(rateLimitRecoveryMs)}`,

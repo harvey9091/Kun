@@ -31,13 +31,13 @@ describe('ModelRoutingService', () => {
     const routing = new ModelRoutingService(model)
     const input = {
       threadId: 'thread_1', turnId: 'turn_1', latestRequest: 'Help me choose the appropriate approach', items: [],
-      signal: new AbortController().signal, providerId: 'provider_1', accountId: 'account_1', candidates: ['auto']
+      signal: new AbortController().signal, providerId: 'deepseek', accountId: 'account_1', candidates: ['auto']
     }
 
     await expect(routing.resolve(input)).resolves.toEqual({ model: 'deepseek-v4-pro', reasoningEffort: 'max' })
     await expect(routing.resolve(input)).resolves.toEqual({ model: 'deepseek-v4-pro', reasoningEffort: 'max' })
     expect(model.requests).toHaveLength(1)
-    expect(model.requests[0]).toMatchObject({ providerId: 'provider_1', accountId: 'account_1' })
+    expect(model.requests[0]).toMatchObject({ providerId: 'deepseek', accountId: 'account_1' })
     routing.clear('thread_1', 'turn_1')
     await routing.resolve(input)
     expect(model.requests).toHaveLength(2)
@@ -59,5 +59,27 @@ describe('ModelRoutingService', () => {
       reasoningEffort: 'high'
     })
     expect(model.requests).toEqual([])
+  })
+
+  it('passes through auto for non-DeepSeek providers without calling the model client', async () => {
+    const model = new RouterModel()
+    const routing = new ModelRoutingService(model)
+
+    await expect(routing.resolve({
+      threadId: 'thread_1', turnId: 'turn_1', latestRequest: 'hello', items: [],
+      signal: new AbortController().signal, providerId: 'custom-provider-3', candidates: ['auto']
+    })).resolves.toEqual({ model: 'auto' })
+    expect(model.requests).toEqual([])
+  })
+
+  it('still uses the router for DeepSeek providers', async () => {
+    const model = new RouterModel()
+    const routing = new ModelRoutingService(model)
+
+    await expect(routing.resolve({
+      threadId: 'thread_1', turnId: 'turn_1', latestRequest: 'Help me choose the appropriate approach', items: [],
+      signal: new AbortController().signal, providerId: 'deepseek', candidates: ['auto']
+    })).resolves.toEqual({ model: 'deepseek-v4-pro', reasoningEffort: 'max' })
+    expect(model.requests).toHaveLength(1)
   })
 })

@@ -33,6 +33,13 @@ export class ModelRoutingService {
         ...(requestedReasoningEffort ? { reasoningEffort: requestedReasoningEffort } : {})
       }
     }
+    if (!supportsDeepSeekAutoRouting(input.providerId)) {
+      // Other providers (for example a FreeLLMAPI proxy) own their own "auto" model: pass it through unchanged.
+      return {
+        model: 'auto',
+        ...(requestedReasoningEffort ? { reasoningEffort: requestedReasoningEffort } : {})
+      }
+    }
     const key = autoModelRouteKey(input.threadId, input.turnId)
     const cached = this.autoModelRoutes.get(key)
     if (cached) {
@@ -82,4 +89,10 @@ function normalizeRequestedReasoningEffort(effort: string | undefined): string |
 
 function autoModelRouteKey(threadId: string, turnId: string): string {
   return `${threadId}:${turnId}`
+}
+
+/** Kun's built-in auto router only knows DeepSeek model ids, so it is only valid for DeepSeek providers. */
+function supportsDeepSeekAutoRouting(providerId: string | undefined): boolean {
+  const id = providerId?.trim().toLowerCase() ?? ''
+  return !id || id === 'deepseek' || id.startsWith('deepseek-')
 }

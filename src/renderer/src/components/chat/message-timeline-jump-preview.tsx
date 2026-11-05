@@ -239,6 +239,14 @@ export function resultPreviewSourcesForTurn(turn: Turn): ExtensionResultPreviewS
   return sources
 }
 
+/** Compact "30s / 2 min" from a millisecond wait, or null when not usable. */
+function formatResetDuration(ms: number): string | null {
+  if (!Number.isFinite(ms) || ms <= 0) return null
+  const totalSeconds = Math.round(ms / 1000)
+  if (totalSeconds < 60) return `${totalSeconds}s`
+  return `${Math.round(totalSeconds / 60)} min`
+}
+
 /** Non-interactive runtime error rendered directly in the conversation flow. */
 export function TimelineRuntimeError({
   block,
@@ -248,7 +256,7 @@ export function TimelineRuntimeError({
   /** Optional "continue the interrupted task" action shown for restart interrupts. */
   onContinue?: () => void
 }): ReactElement {
-  const { openProviderSettings, openAgentSettings } = useTurnRuntimeErrorActions()
+  const { openProviderSettings, openAgentSettings, retryTurn } = useTurnRuntimeErrorActions()
   const { t } = useTranslation('common')
   const code = block.code?.trim() ?? ''
   const errorView = describeRuntimeError(JSON.stringify({ code, message: block.text }))
@@ -301,6 +309,20 @@ export function TimelineRuntimeError({
     requestFailure?.httpStatus ? `HTTP ${requestFailure.httpStatus}` : '',
     providerCode
   ].filter(Boolean)
+  // A transient provider failure (busy / rate limited) is worth one deliberate
+  // retry. Surface the provider's declared reset window when it gave one, and a
+  // Retry affordance that re-runs the exact request that failed.
+  const failureCategory = requestFailure?.category
+  const busyRetryable = providerResponded &&
+    (failureCategory === 'unavailable' || failureCategory === 'rate_limit')
+  const resetMs = requestFailure?.retryAfterMs ??
+    (requestFailure?.resetAt ? Date.parse(requestFailure.resetAt) - Date.now() : undefined)
+  const resetDuration = resetMs !== undefined && Number.isFinite(resetMs)
+    ? formatResetDuration(resetMs)
+    : null
+  const busyLine = busyRetryable
+    ? (resetDuration ? t('modelErrorProviderBusyResetsIn', { duration: resetDuration }) : t('modelErrorProviderBusyRetryHint'))
+    : ''
 
   return (
     <div
@@ -347,6 +369,9 @@ export function TimelineRuntimeError({
         }`}>
           {message}
         </p>
+        {busyLine ? (
+          <p className="mt-1 text-[12.5px] leading-5 text-red-800/80 dark:text-red-200/80">{busyLine}</p>
+        ) : null}
         {requestFailure && block.text.trim() ? (
           <div className={`mt-2 max-h-40 overflow-auto rounded-lg border px-3 py-2 ${
             providerResponded
@@ -388,6 +413,16 @@ export function TimelineRuntimeError({
           </details>
         ) : null}
         <div className="mt-2 flex flex-wrap items-center gap-2">
+          {busyRetryable ? (
+            <button
+              type="button"
+              data-testid="timeline-runtime-error-retry"
+              onClick={() => retryTurn(block.turnId)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-orange-300/60 bg-orange-100/60 px-2.5 py-1 text-[12.5px] font-medium text-orange-900 transition-colors hover:bg-orange-200/70 dark:border-orange-700/60 dark:bg-orange-900/40 dark:text-orange-100 dark:hover:bg-orange-800/50"
+            >
+              {t('modelErrorProviderRetry')}
+            </button>
+          ) : null}
           {agentError ? (
             <button type="button" data-testid="timeline-runtime-error-agent-settings" onClick={openAgentSettings}
               className="inline-flex items-center gap-1.5 rounded-md border border-orange-300/60 px-2.5 py-1 text-[12.5px] font-medium text-orange-800 transition-colors hover:bg-orange-100/60 dark:border-orange-700/60 dark:text-orange-200 dark:hover:bg-orange-900/30">

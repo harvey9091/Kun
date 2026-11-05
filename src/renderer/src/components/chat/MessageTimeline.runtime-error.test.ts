@@ -80,6 +80,56 @@ describe('TimelineRuntimeError', () => {
     expect(html).toContain('server_is_overloaded')
   })
 
+  it('shows a reset ETA and a Retry affordance for a busy provider failure', async () => {
+    await act(async () => {
+      renderer = create(createElement(TimelineRuntimeError, {
+        block: {
+          kind: 'system', id: 'busy_error', severity: 'error', runtimeError: true,
+          text: 'No candidate model has a configured, usable provider key.',
+          code: 'no_providers_configured',
+          modelRequestFailure: {
+            requestState: 'provider_responded', providerId: 'freellm-proxy', model: 'auto',
+            httpStatus: 503, providerCode: 'no_providers_configured', category: 'unavailable',
+            retryAfterMs: 29_001
+          }
+        }
+      }))
+    })
+    const html = JSON.stringify(renderer.toJSON())
+    expect(html).toContain('free up in about 29s')
+    expect(renderer.root.findByProps({ 'data-testid': 'timeline-runtime-error-retry' })).toBeTruthy()
+  })
+
+  it('retry re-runs the failed turn through the rewind and resend path', async () => {
+    const rewindAndResend = vi.fn()
+    const previous = useChatStore.getState()
+    useChatStore.setState({
+      rewindAndResend,
+      blocks: [{ kind: 'user', id: 'user_busy', text: 'summarize the report', meta: { turnId: 'turn_busy' } }]
+    } as never)
+    try {
+      await act(async () => {
+        renderer = create(createElement(TimelineRuntimeError, {
+          block: {
+            kind: 'system', id: 'busy_error', severity: 'error', runtimeError: true, turnId: 'turn_busy',
+            text: 'No candidate model has a configured, usable provider key.',
+            code: 'no_providers_configured',
+            modelRequestFailure: {
+              requestState: 'provider_responded', providerId: 'freellm-proxy', model: 'auto',
+              httpStatus: 503, providerCode: 'no_providers_configured', category: 'unavailable',
+              retryAfterMs: 29_001
+            }
+          }
+        }))
+      })
+      const retry = renderer.root.findByProps({ 'data-testid': 'timeline-runtime-error-retry' })
+      await act(async () => retry.props.onClick())
+      expect(rewindAndResend).toHaveBeenCalledWith('user_busy', 'summarize the report')
+    } finally {
+      useChatStore.setState(previous)
+    }
+  })
+
   it('does not mislabel transport or preflight failures as provider responses', async () => {
     for (const [requestState, expected] of [
       ['sent_no_response', 'No provider response'],

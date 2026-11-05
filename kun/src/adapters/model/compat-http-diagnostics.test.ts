@@ -95,4 +95,22 @@ describe('compat HTTP diagnostics', () => {
     expect(JSON.stringify(log)).not.toContain('token=secret')
     expect(String(log.responseBody)).toHaveLength(1_003)
   })
+
+  it('classifies 503 no_providers_configured', async () => {
+    await expect(classifyCompatHttpError({
+      status: 503, text: '{"code":"no_providers_configured"}', baseUrl: 'https://example.test', fetchImpl: vi.fn()
+    })).resolves.toMatchObject({ code: 'no_providers_configured' })
+  })
+
+  it('does not classify plain 503 without the code', async () => {
+    await expect(classifyCompatHttpError({
+      status: 503, text: 'overloaded', baseUrl: 'https://example.test', fetchImpl: vi.fn()
+    })).resolves.not.toMatchObject({ code: 'no_providers_configured' })
+  })
+
+  it('still classifies 429 as rate_limited', async () => {
+    await expect(classifyCompatHttpError({
+      status: 429, text: 'too many', baseUrl: 'https://example.test', fetchImpl: vi.fn()
+    })).resolves.toMatchObject({ code: 'rate_limited' })
+  })
 })

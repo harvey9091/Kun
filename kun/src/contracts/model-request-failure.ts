@@ -31,8 +31,10 @@ export const ModelRequestFailureContextSchema = z.object({
   category: ModelRequestFailureCategorySchema.optional(),
   /** Unified failure reason from the shared classifier, when known. */
   reason: z.enum([
-    'credit', 'quota', 'rate', 'overloaded', 'auth', 'model', 'request', 'other'
+    'credit', 'quota', 'rate', 'overloaded', 'auth', 'model', 'request', 'unavailable', 'other'
   ]).optional(),
-  retryAfterMs: z.number().int().nonnegative().max(3_600_000).optional()
+  retryAfterMs: z.number().int().nonnegative().max(3_600_000).optional(),
+  /** Provider-declared quota/rate reset instant (ISO 8601), when known. */
+  resetAt: z.string().min(1).max(64).optional()
 }).strict()
 export type ModelRequestFailureContext = z.infer<typeof ModelRequestFailureContextSchema>

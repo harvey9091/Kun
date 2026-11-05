@@ -140,6 +140,8 @@ export function classifyModelFailure(input: {
     (status === undefined || status === 400 || status === 422) &&
     MODEL_UNAVAILABLE_SIGNAL.test(signal)
   ) reason = 'model'
+  // 5b. no_providers_configured is a missing-key problem: never "rate".
+  else if (/no_providers_configured/i.test(signal)) reason = 'unavailable'
   // 6. Generic mappings.
   else if (status === 429 || RATE_SIGNAL.test(signal)) reason = 'rate'
   else if (status === 529 || OVERLOADED_SIGNAL.test(signal)) reason = 'overloaded'
@@ -200,6 +202,7 @@ function categoryForReason(reason: ModelFailureReason, status?: number): ModelFa
     case 'rate':
       return 'rate_limit'
     case 'overloaded':
+    case 'unavailable':
       return 'unavailable'
     case 'auth':
       return 'authentication'
@@ -275,6 +278,8 @@ export function httpRetryBudget(input: {
       return hasAlternatives
         ? { maxAttempts: Math.min(1, policyMax), delayCapMs: 3_000 }
         : { maxAttempts: policyMax }
+    case 'unavailable':
+      return { maxAttempts: 0 }
     default:
       return { maxAttempts: policyMax }
   }
