@@ -8,6 +8,17 @@ import {
   WINDOW_CLOSE_ACTIONS
 } from '../../../shared/app-settings'
 import { COLOR_PALETTE_IDS } from '../../../shared/app-settings-color-palette'
+import {
+  APP_BACKGROUND_FITS,
+  APP_BACKGROUND_MOTIONS,
+  APP_BACKGROUND_TYPES,
+  BACKGROUND_ANGLE_MAX,
+  GLASS_BRIGHTNESS_MAX,
+  GLASS_BRIGHTNESS_MIN,
+  GLASS_BLUR_MAX,
+  GLASS_BLUR_MIN
+} from '../../../shared/app-settings-appearance'
+import { THEME_PRESET_MAX_COUNT } from '../../../shared/app-settings-appearance-presets'
 import { GUI_UPDATE_CHANNELS } from '../../../shared/gui-update'
 import { KEYBOARD_SHORTCUT_COMMANDS } from '../../../shared/keyboard-shortcuts'
 import { kunGraphPatchSchema } from './settings-graph'
@@ -112,6 +123,45 @@ const colorPalettePatchSchema = z.object({
     accent: hexColorSchema.optional()
   }).strict().optional(),
   customDarkAccent: hexColorSchema.optional()
+}).strict()
+
+const glassPatchSchema = z.object({
+  enabled: z.boolean().optional(),
+  blurPx: z.number().min(GLASS_BLUR_MIN).max(GLASS_BLUR_MAX).optional(),
+  opacity: z.number().min(0).max(1).optional(),
+  tint: hexColorSchema.optional(),
+  borderIntensity: z.number().min(0).max(1).optional(),
+  shadowIntensity: z.number().min(0).max(1).optional()
+}).strict()
+
+const backgroundPatchSchema = z.object({
+  type: z.enum(APP_BACKGROUND_TYPES).optional(),
+  solidColor: hexColorSchema.optional(),
+  gradientFrom: hexColorSchema.optional(),
+  gradientTo: hexColorSchema.optional(),
+  gradientAngle: z.number().min(0).max(BACKGROUND_ANGLE_MAX).optional(),
+  motion: z.enum(APP_BACKGROUND_MOTIONS).optional(),
+  imagePath: z.string().max(MAX_PATH_LENGTH).optional(),
+  fit: z.enum(APP_BACKGROUND_FITS).optional(),
+  brightness: z.number().min(GLASS_BRIGHTNESS_MIN).max(GLASS_BRIGHTNESS_MAX).optional(),
+  overlay: z.number().min(0).max(1).optional(),
+  overlayColor: hexColorSchema.optional()
+}).strict()
+
+const appearanceLookPatchSchema = z.object({
+  theme: themeSchema.optional(),
+  colorPalette: colorPalettePatchSchema.optional(),
+  darkUiColors: darkUiColorsPatchSchema.optional(),
+  glass: glassPatchSchema.optional(),
+  background: backgroundPatchSchema.optional(),
+  uiFontScale: uiFontScaleSchema.optional()
+}).strict()
+
+const themePresetPatchSchema = z.object({
+  id: trimmedString(80),
+  name: z.string().max(60),
+  builtIn: z.boolean(),
+  look: appearanceLookPatchSchema
 }).strict()
 
 const appBehaviorPatchSchema = z.object({
@@ -558,6 +608,10 @@ const settingsPatchObjectSchema = z.object({
   homeGlyphRipple: z.boolean().optional(),
   darkUiColors: darkUiColorsPatchSchema.optional(),
   colorPalette: colorPalettePatchSchema.optional(),
+  glass: glassPatchSchema.optional(),
+  background: backgroundPatchSchema.optional(),
+  themePresets: z.array(themePresetPatchSchema).max(THEME_PRESET_MAX_COUNT).optional(),
+  activePresetId: z.string().max(80).optional(),
   provider: modelProviderPatchSchema.optional(),
   agents: z.object({
     kun: kunRuntimePatchSchema.optional()

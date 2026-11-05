@@ -170,6 +170,10 @@ const api = {
     ipcRenderer.invoke('grok:auth:browser:cancel'),
   pickWorkspaceDirectory: (defaultPath) =>
     ipcRenderer.invoke('workspace:pick-directory', defaultPath),
+  pickAppBackgroundImage: (previousPath) =>
+    ipcRenderer.invoke('appearance:pick-background-image', { previousPath }),
+  removeAppBackgroundImage: (backgroundPath) =>
+    ipcRenderer.invoke('appearance:remove-background-image', { backgroundPath }),
   workspaceDirectoryExists: (workspaceRoot) =>
     ipcRenderer.invoke('workspace:directory-exists', workspaceRoot),
   pickLocalFiles: (defaultPath) =>

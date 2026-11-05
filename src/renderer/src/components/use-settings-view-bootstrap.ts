@@ -13,20 +13,21 @@ import {
   applyWriteTypography
 } from '../lib/apply-theme'
 import { applyColorPalette } from '../lib/color-palettes'
+import { applyBackground, applyGlass } from '../lib/apply-appearance'
 import { SETTINGS_CHANGED_EVENT } from '../lib/keyboard-shortcut-settings'
 import {
   coerceRendererSettings
 } from './settings-utils'
 
 export function useSettingsViewBootstrap(scope: Record<string, any>): { loadWriteDebugEntries: () => Promise<void> } {
-  const { category, setCategory, form, setForm, setLoadError, setLogPath, setWriteCompletionDebugEntries, setWriteCompletionDebugSelectedId, setWriteDebugLoading, setWriteDebugError, extensionContributionSnapshotReady, extensionSettingsAvailable, settingsScrollerRef, persistedSettingsRef, formTheme, formUiFontScale, formChatContentMaxWidthPx, writeTypography, formCursorSpotlight, formCursorSpotlightColor, formDarkUiColors } = scope
+  const { category, setCategory, form, setForm, setLoadError, setLogPath, setWriteCompletionDebugEntries, setWriteCompletionDebugSelectedId, setWriteDebugLoading, setWriteDebugError, extensionContributionSnapshotReady, extensionSettingsAvailable, settingsScrollerRef, persistedSettingsRef, formTheme, formUiFontScale, formChatContentMaxWidthPx, writeTypography, formCursorSpotlight, formCursorSpotlightColor, formDarkUiColors, formGlass, formBackground } = scope
   useEffect(() => {
     if (
       category === 'extensions' &&
       extensionContributionSnapshotReady &&
       !extensionSettingsAvailable
     ) setCategory('general')
-  }, [category, extensionContributionSnapshotReady, extensionSettingsAvailable])
+  }, [category, setCategory, extensionContributionSnapshotReady, extensionSettingsAvailable])
 
   useEffect(() => {
     let cancelled = false
@@ -49,7 +50,7 @@ export function useSettingsViewBootstrap(scope: Record<string, any>): { loadWrit
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [persistedSettingsRef, setForm, setLoadError])
 
   useEffect(() => {
     if (!formTheme || formUiFontScale == null || formChatContentMaxWidthPx == null) return
@@ -71,6 +72,11 @@ export function useSettingsViewBootstrap(scope: Record<string, any>): { loadWrit
     if (formColorPalette) applyColorPalette(formColorPalette, formDarkUiColors)
   }, [formDarkUiColors, formColorPalette])
 
+  useEffect(() => {
+    if (formGlass !== undefined) applyGlass(formGlass)
+    if (formBackground !== undefined) applyBackground(formBackground)
+  }, [formGlass, formBackground])
+
   // Live-preview the Write editor typography as the form changes, mirroring the
   // theme/scale preview above.
   useEffect(() => {
@@ -88,12 +94,12 @@ export function useSettingsViewBootstrap(scope: Record<string, any>): { loadWrit
     }
     window.addEventListener(SETTINGS_CHANGED_EVENT, onSettingsChanged)
     return () => window.removeEventListener(SETTINGS_CHANGED_EVENT, onSettingsChanged)
-  }, [])
+  }, [persistedSettingsRef, setForm])
 
   useEffect(() => {
     if (typeof window.kunGui?.getLogPath !== 'function') return
     void window.kunGui.getLogPath().then((p) => setLogPath(p)).catch(() => undefined)
-  }, [category])
+  }, [category, setLogPath])
 
   const loadWriteDebugEntries = useCallback(async (): Promise<void> => {
     setWriteDebugLoading(true)
@@ -113,7 +119,7 @@ export function useSettingsViewBootstrap(scope: Record<string, any>): { loadWrit
     } finally {
       setWriteDebugLoading(false)
     }
-  }, [])
+  }, [setWriteDebugLoading, setWriteDebugError, setWriteCompletionDebugEntries, setWriteCompletionDebugSelectedId])
 
   useEffect(() => {
     if (category !== 'write') return
@@ -122,6 +128,6 @@ export function useSettingsViewBootstrap(scope: Record<string, any>): { loadWrit
 
   useEffect(() => {
     settingsScrollerRef.current?.scrollTo({ top: 0, behavior: 'auto' })
-  }, [category])
+  }, [category, settingsScrollerRef])
   return { loadWriteDebugEntries }
 }

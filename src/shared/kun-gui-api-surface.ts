@@ -253,7 +253,7 @@ import {
 import type { KunGuiProviderApi } from './kun-gui-api-surface-provider'
 import type { KunGuiMarketApi } from './market/kun-gui-api-market'
 export type KunGuiApi = ExtensionIpcApi & RemoteSshApi & ProviderAuthApi & RuntimeRequestIpcApi & KunGuiSseSurface & KunGuiLocalSpeechApi & KunGuiPaperApi & KunGuiWriteAiApi & KunGuiProviderApi & KunGuiMarketApi &
-  import('./app-sandbox').KunGuiAppSandboxApi & import('./git-commit').KunGuiGitCommitApi & import('./terminal-dock').KunGuiTerminalDockApi &
+  import('./app-sandbox').KunGuiAppSandboxApi & import('./git-commit').KunGuiGitCommitApi & import('./terminal-dock').KunGuiTerminalDockApi & import('./kun-gui-api-surface-appearance').KunGuiAppearanceApi &
   import('./kun-gui-api-data-migration').KunGuiDataMigrationApi &
   import('./git-turn-undo').KunGuiGitTurnUndoApi & import('./office-version').KunGuiOfficeVersionApi & import('./artifact-thumbnail').KunGuiArtifactThumbnailApi &
   import('./ade-collaboration-settings').AdeCollaborationSettingsBridge & import('./ade-project-defaults').AdeProjectDefaultsBridge & {

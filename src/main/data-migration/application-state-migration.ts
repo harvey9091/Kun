@@ -43,6 +43,16 @@ export function applyPortableSettingsMigration(
     ...(value.colorPalette && typeof value.colorPalette === 'object'
       ? { colorPalette: value.colorPalette as AppSettingsV1['colorPalette'] }
       : {}),
+    ...(value.glass && typeof value.glass === 'object'
+      ? { glass: value.glass as AppSettingsV1['glass'] }
+      : {}),
+    ...(value.background && typeof value.background === 'object'
+      ? { background: value.background as AppSettingsV1['background'] }
+      : {}),
+    ...(Array.isArray(value.themePresets)
+      ? { themePresets: value.themePresets as AppSettingsV1['themePresets'] }
+      : {}),
+    ...(typeof value.activePresetId === 'string' ? { activePresetId: value.activePresetId } : {}),
     darkUiColors: {
       ...current.darkUiColors,
       ...pickDefined(darkUiColors, ['background', 'border', 'panel'])

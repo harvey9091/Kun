@@ -138,6 +138,27 @@ export async function acquireAppSessionReservation(input: {
 
 const CLAIM_PUBLICATION_GRACE_MS = 5_000
 const CLAIM_RETRY_MS = 50
+const SESSION_CLAIM_LOG = '[app-session]'
+
+type ClaimOwnerStateValue = ReturnType<typeof runtimeProcessOwnerState>
+
+/**
+ * Structured, non-sensitive claim diagnostics (requirement: identify owner PID,
+ * identity verification result, and the recovery action taken). Logs the owner
+ * kind, its PID, the verification verdict, and the action Kun chose. Never logs
+ * the profile path, tokens, environment, or raw payloads.
+ */
+function logSessionClaim(
+  existing: AppSessionOwner,
+  state: ClaimOwnerStateValue,
+  action = 'evaluate'
+): void {
+  try {
+    console.info(`${SESSION_CLAIM_LOG} claim decision`, JSON.stringify({
+      action, ownerKind: existing.ownerKind, ownerPid: existing.ownerPid, ownerState: state
+    }))
+  } catch { /* diagnostics must never break startup */ }
+}
 
 type ClaimOwnerState =
   | { kind: 'record'; value: z.infer<typeof AppSessionReservationSchema> }
@@ -169,18 +190,39 @@ export async function claimAppSessionReservation(
     }
     const owner = await readClaimOwner(path)
     if (owner.kind === 'record') {
-      const ownerState = runtimeProcessOwnerState(owner.value.owner.ownerPid, {
-        startedAt: owner.value.owner.ownerStartedAt, processIdentity: owner.value.owner.ownerProcessIdentity
+      const existing = owner.value.owner
+      const ownerState = runtimeProcessOwnerState(existing.ownerPid, {
+        startedAt: existing.ownerStartedAt, processIdentity: existing.ownerProcessIdentity
       })
-      if (ownerState === 'unknown') throw new AppSessionConflictError(path, 'application process birth identity cannot be verified')
+      logSessionClaim(existing, ownerState)
       if (ownerState === 'alive') {
         throw new AppSessionConflictError(
           path,
-          `a running ${owner.value.owner.ownerKind} application session (pid ${owner.value.owner.ownerPid}) owns this profile`
+          `a running ${existing.ownerKind} application session (pid ${existing.ownerPid}) owns this profile`
         )
       }
+      // 'dead'/'reused': the recorded owner exited, or its PID was recycled by an
+      // unrelated process. 'unknown': its birth identity could not be verified
+      // (a Windows PID reused by an unreadable process, or a native identity query
+      // that failed under load). None of these prove a live Kun client, so decide
+      // by live Kun evidence instead of failing closed forever on 'unknown'.
       const orphans = await liveParticipants(path)
-      if (orphans.length > 0) throw orphanedReservationError(path, owner.value.owner, orphans)
+      if (orphans.length > 0) throw orphanedReservationError(path, existing, orphans)
+      if (ownerState === 'unknown') {
+        // An unverifiable owner with no live recorded process is a stale record
+        // from a crash, not proof of a running client. A live Runtime Manager
+        // still blocks the claim; otherwise the record is archived (evidence is
+        // preserved, never deleted) after the publication grace, so the profile
+        // is reclaimed without ever discarding a potentially valid owner.
+        const managerConflict = await claimManagerConflict(path, record)
+        if (managerConflict) throw managerConflict
+        const ageMs = await claimDirectoryAgeMs(path)
+        if (ageMs === undefined) continue
+        if (ageMs < graceMs) { await delay(CLAIM_RETRY_MS); continue }
+        logSessionClaim(existing, ownerState, 'archive-unverified-owner')
+        await archiveUnverifiedClaim(path)
+        continue
+      }
       await retireClaimDirectory(path)
       continue
     }

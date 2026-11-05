@@ -42,6 +42,10 @@ import {
   mergeDarkUiColors,
   mergeColorPaletteSettings,
   normalizeColorPaletteSettings,
+  mergeGlassSettings,
+  mergeBackgroundSettings,
+  normalizeGlassSettings,
+  normalizeBackgroundSettings,
   DEFAULT_CHAT_CONTENT_MAX_WIDTH_PX,
   DEFAULT_COMPOSER_SEND_KEY,
   DEFAULT_UI_FONT_SCALE,
@@ -309,6 +313,10 @@ export const defaultSettings = (): AppSettingsV1 => ({
   homeGlyphRipple: true,
   darkUiColors: { ...DEFAULT_DARK_UI_COLORS },
   colorPalette: normalizeColorPaletteSettings(),
+  glass: normalizeGlassSettings(),
+  background: normalizeBackgroundSettings(),
+  themePresets: [],
+  activePresetId: '',
   provider: defaultModelProviderSettings(),
   agents: {
     kun: defaultKunRuntimeSettings()
@@ -497,6 +505,8 @@ export function applySettingsPatchToSnapshot(
     provider: providerPatch,
     darkUiColors: darkUiColorsPatch,
     colorPalette: colorPalettePatch,
+    glass: glassPatch,
+    background: backgroundPatch,
     ...restPatch
   } = partial
   const darkUiColors = mergeDarkUiColors(current.darkUiColors, darkUiColorsPatch)
@@ -505,6 +515,8 @@ export function applySettingsPatchToSnapshot(
     ...restPatch,
     darkUiColors,
     colorPalette: mergeColorPaletteSettings(current.colorPalette, colorPalettePatch, darkUiColors),
+    glass: mergeGlassSettings(current.glass, glassPatch),
+    background: mergeBackgroundSettings(current.background, backgroundPatch),
     provider: mergeModelProviderSettings(current.provider, providerPatch),
     log: { ...current.log, ...(partial.log ?? {}) },
     checkpointCleanup: normalizeCheckpointCleanupSettings({

@@ -4,6 +4,13 @@ import type {
   WritePaperModeSettingsV1
 } from './app-settings-types-paper-mode'
 import type { ColorPaletteSettingsPatchV1, ColorPaletteSettingsV1 } from './app-settings-color-palette'
+import type {
+  AppBackgroundSettingsPatchV1,
+  AppBackgroundSettingsV1,
+  GlassmorphismSettingsPatchV1,
+  GlassmorphismSettingsV1
+} from './app-settings-appearance'
+import type { AppearancePresetV1 } from './app-settings-appearance-presets'
 import type { GuiUpdateChannel } from './gui-update'
 import type { KeyboardShortcutsConfigV1 } from './keyboard-shortcuts'
 import type { LocalWhisperDownloadSourceId } from './local-whisper'
@@ -563,6 +570,14 @@ export type AppSettingsV1 = {
   darkUiColors?: DarkUiColorsV1
   /** Legacy snapshots omit this field; normalized settings always populate it. */
   colorPalette?: ColorPaletteSettingsV1
+  /** Glassmorphism surface settings. Optional so legacy snapshots stay valid. */
+  glass?: GlassmorphismSettingsV1
+  /** Whole-window background layer settings. Optional for legacy snapshots. */
+  background?: AppBackgroundSettingsV1
+  /** User theme presets. Replaced wholesale on patch; built-ins are not stored here. */
+  themePresets?: AppearancePresetV1[]
+  /** Id of the currently applied preset (built-in or user). Empty when none. */
+  activePresetId?: string
   provider: ModelProviderSettingsV1
   agents: KunSettingsEnvelopeV1
   workspaceRoot: string
@@ -598,10 +613,12 @@ export type AppSettingsV1 = {
 }
 
 export type AppSettingsPatch = Partial<
-  Omit<AppSettingsV1, 'provider' | 'agents' | 'log' | 'checkpointCleanup' | 'notifications' | 'appBehavior' | 'keyboardShortcuts' | 'write' | 'claw' | 'schedule' | 'design' | 'workflow' | 'guiUpdate' | 'terminal' | 'remote' | 'darkUiColors' | 'colorPalette'>
+  Omit<AppSettingsV1, 'provider' | 'agents' | 'log' | 'checkpointCleanup' | 'notifications' | 'appBehavior' | 'keyboardShortcuts' | 'write' | 'claw' | 'schedule' | 'design' | 'workflow' | 'guiUpdate' | 'terminal' | 'remote' | 'darkUiColors' | 'colorPalette' | 'glass' | 'background'>
 > & {
   darkUiColors?: DarkUiColorsPatchV1
   colorPalette?: ColorPaletteSettingsPatchV1
+  glass?: GlassmorphismSettingsPatchV1
+  background?: AppBackgroundSettingsPatchV1
   provider?: ModelProviderSettingsPatchV1
   agents?: KunSettingsEnvelopePatchV1
   log?: Partial<LogConfigV1>

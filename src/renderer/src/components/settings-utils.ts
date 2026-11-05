@@ -16,6 +16,11 @@ import {
   mergeDarkUiColors,
   mergeColorPaletteSettings,
   normalizeColorPaletteSettings,
+  mergeGlassSettings,
+  mergeBackgroundSettings,
+  normalizeGlassSettings,
+  normalizeBackgroundSettings,
+  normalizeThemePresets,
   normalizeAppBehaviorSettings,
   normalizeClawSettings,
   normalizeDesignSettings,
@@ -109,6 +114,8 @@ export function mergeSettings(current: AppSettingsV1, patch: SettingsPatch): App
     provider: providerPatch,
     darkUiColors: darkUiColorsPatch,
     colorPalette: colorPalettePatch,
+    glass: glassPatch,
+    background: backgroundPatch,
     ...restPatch
   } = patch
   const darkUiColors = mergeDarkUiColors(safeCurrent.darkUiColors, darkUiColorsPatch)
@@ -117,6 +124,8 @@ export function mergeSettings(current: AppSettingsV1, patch: SettingsPatch): App
     ...restPatch,
     darkUiColors,
     colorPalette: mergeColorPaletteSettings(safeCurrent.colorPalette, colorPalettePatch, darkUiColors),
+    glass: mergeGlassSettings(safeCurrent.glass, glassPatch),
+    background: mergeBackgroundSettings(safeCurrent.background, backgroundPatch),
     provider: mergeModelProviderSettings(safeCurrent.provider, providerPatch),
     log: {
       ...safeCurrent.log,
@@ -177,6 +186,10 @@ export function coerceRendererSettings(settings: AppSettingsV1): AppSettingsV1 {
     homeGlyphRipple: raw.homeGlyphRipple !== false,
     darkUiColors: normalizeDarkUiColors(raw.darkUiColors),
     colorPalette: normalizeColorPaletteSettings(raw.colorPalette, raw.darkUiColors),
+    glass: normalizeGlassSettings(raw.glass),
+    background: normalizeBackgroundSettings(raw.background),
+    themePresets: normalizeThemePresets(raw.themePresets),
+    activePresetId: typeof raw.activePresetId === 'string' ? raw.activePresetId : '',
     provider: normalizeModelProviderSettings(raw.provider),
     agents: kunSettingsEnvelope(mergeKunRuntimeSettings(defaultKunRuntimeSettings(), getKunRuntimeSettings(settings))),
     workspaceRoot: typeof raw.workspaceRoot === 'string' ? raw.workspaceRoot : DEFAULT_WORKSPACE_ROOT,

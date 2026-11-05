@@ -26,6 +26,7 @@ import './styles/neutral-polish.css'
 import './styles/provider-quota-panel.css'
 import { applyCursorSpotlight, initializeStartupTheme } from './lib/apply-theme'
 import { applyCachedColorPalette } from './lib/color-palettes'
+import { applyCachedAppearance } from './lib/apply-appearance'
 import { installCursorSpotlightTracking } from './lib/cursor-spotlight'
 import { installDataMigrationRendererRpc } from './data-migration/renderer-state-rpc'
 import { resolveDesktopTitleBarMode } from '@shared/desktop-title-bar'
@@ -44,6 +45,7 @@ void whenDesktopStartupReady()
   .catch((error: unknown) => console.warn('[kun-gui] art updates unavailable:', error))
 initializeStartupTheme()
 applyCachedColorPalette()
+applyCachedAppearance()
 applyCursorSpotlight(true)
 installCursorSpotlightTracking()
 const storageRelocationMode = new URLSearchParams(window.location.search).get('storageRelocation') === '1'

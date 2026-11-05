@@ -22,6 +22,23 @@
   --ds-radius-pill: 9999px;
   --ds-duration-functional: 150ms;
 
+  /* Appearance engine defaults: inert until apply-appearance sets data-* on <html>. */
+  --ds-glass-blur: 16px;
+  --ds-glass-opacity: 0.62;
+  --ds-glass-tint: #0f172a;
+  --ds-glass-border: 0.5;
+  --ds-glass-shadow: 0.5;
+  --ds-app-bg-solid: #101014;
+  --ds-app-bg-gradient-from: #0b1f3a;
+  --ds-app-bg-gradient-to: #3a0b2f;
+  --ds-app-bg-gradient-angle: 135deg;
+  --ds-app-bg-gradient: none;
+  --ds-app-bg-image: none;
+  --ds-app-bg-fit: cover;
+  --ds-app-bg-brightness: 1;
+  --ds-app-bg-overlay: 0;
+  --ds-app-bg-overlay-color: #000000;
+
   --ds-bg-main: var(--bg-app);
   --ds-bg-sidebar: var(--bg-sidebar);
   --ds-bg-canvas: var(--bg-canvas);

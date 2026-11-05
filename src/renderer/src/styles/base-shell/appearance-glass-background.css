@@ -1,0 +1,159 @@
+/*
+ * Premium appearance engine: a whole-window background layer plus opt-in
+ * glassmorphism on the large workbench surfaces only. Everything is inert until
+ * `apply-appearance.ts` sets the `data-*` attributes and `--ds-*` variables on
+ * <html>, so the default opaque look never changes and unrelated surfaces stay
+ * fully readable. Blur is limited to a few big panels for performance.
+ */
+
+/* ===== Whole-window background layer ===== */
+/*
+ * Two fixed pseudo-elements on the top-level shells paint the wallpaper
+ * (`::before`) and an optional darkening scrim over it (`::after`). They sit in
+ * the shell's stacking context below its in-flow panels, so the image or
+ * gradient shows through the gutters and, when glass is on, through the panels.
+ */
+.ds-workbench-shell,
+.ds-settings-surface {
+  position: relative;
+  z-index: 0;
+}
+
+.ds-workbench-shell::before,
+.ds-settings-surface::before,
+.ds-workbench-shell::after,
+.ds-settings-surface::after {
+  content: '';
+  position: fixed;
+  inset: -6%;
+  z-index: -2;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  opacity: 0;
+  transition: opacity var(--ds-duration-functional, 150ms) ease;
+}
+
+/* Scrim draws over the wallpaper; keep it just above the background layer. */
+.ds-workbench-shell::after,
+.ds-settings-surface::after {
+  z-index: -1;
+  background: var(--ds-app-bg-overlay-color, #000);
+  background-image: none;
+  filter: none;
+  opacity: var(--ds-app-bg-overlay, 0);
+  animation: none;
+}
+
+:root[data-bg-type='solid'] .ds-workbench-shell::before,
+:root[data-bg-type='solid'] .ds-settings-surface::before {
+  opacity: 1;
+  background-color: var(--ds-app-bg-solid, transparent);
+}
+
+:root[data-bg-type='gradient'] .ds-workbench-shell::before,
+:root[data-bg-type='gradient'] .ds-settings-surface::before {
+  opacity: 1;
+  background-image: var(--ds-app-bg-gradient, none);
+}
+
+:root[data-bg-type='image'] .ds-workbench-shell::before,
+:root[data-bg-type='image'] .ds-settings-surface::before {
+  opacity: 1;
+  background-image: var(--ds-app-bg-image, none);
+  filter: brightness(var(--ds-app-bg-brightness, 1));
+}
+
+/* Fit modes map onto background-size/repeat; `center` shows at native size. */
+:root[data-bg-type='image'][data-bg-fit='contain'] .ds-workbench-shell::before,
+:root[data-bg-type='image'][data-bg-fit='contain'] .ds-settings-surface::before {
+  background-size: contain;
+}
+:root[data-bg-type='image'][data-bg-fit='center'] .ds-workbench-shell::before,
+:root[data-bg-type='image'][data-bg-fit='center'] .ds-settings-surface::before {
+  background-size: auto;
+}
+:root[data-bg-type='image'][data-bg-fit='tile'] .ds-workbench-shell::before,
+:root[data-bg-type='image'][data-bg-fit='tile'] .ds-settings-surface::before {
+  background-size: auto;
+  background-repeat: repeat;
+}
+
+/* Gentle drift for solid/gradient/image when motion is enabled. */
+@keyframes kun-appearance-bg-drift {
+  0% {
+    transform: scale(1.04) translate3d(0, 0, 0);
+  }
+  100% {
+    transform: scale(1.12) translate3d(0, -1.5%, 0);
+  }
+}
+
+:root[data-bg-motion='drift'][data-bg-type='gradient'] .ds-workbench-shell::before,
+:root[data-bg-motion='drift'][data-bg-type='gradient'] .ds-settings-surface::before,
+:root[data-bg-motion='drift'][data-bg-type='image'] .ds-workbench-shell::before,
+:root[data-bg-motion='drift'][data-bg-type='image'] .ds-settings-surface::before {
+  animation: kun-appearance-bg-drift 48s ease-in-out infinite alternate;
+}
+
+/* ===== Glassmorphism (opt-in, large surfaces only) ===== */
+:root[data-glass='on'] .ds-workbench-shell,
+:root[data-glass='on'] .ds-workbench-card,
+:root[data-glass='on'] .ds-sidebar-shell,
+:root[data-glass='on'] .ds-topbar-surface,
+:root[data-glass='on'] .ds-stage-surface,
+:root[data-glass='on'] .ds-settings-surface,
+:root[data-glass='on'] .ds-composer-shell {
+  background-color: color-mix(
+    in srgb,
+    var(--ds-glass-tint, #0f172a) calc(var(--ds-glass-opacity, 0.62) * 100%),
+    transparent
+  ) !important;
+  backdrop-filter: blur(var(--ds-glass-blur, 16px)) saturate(1.05);
+  -webkit-backdrop-filter: blur(var(--ds-glass-blur, 16px)) saturate(1.05);
+}
+
+/* Soft edge + depth on the floating surfaces, scaled by the intensity sliders. */
+:root[data-glass='on'] .ds-composer-shell,
+:root[data-glass='on'] .ds-workbench-card {
+  border-color: rgba(255, 255, 255, calc(var(--ds-glass-border, 0.5) * 0.16)) !important;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, calc(var(--ds-glass-shadow, 0.5) * 0.45)) !important;
+}
+
+/* Buttons, prose, code and chat bubbles must never turn translucent: keep the
+ * readable opaque fills even when glass is on. */
+:root[data-glass='on'] .ds-code-bg,
+:root[data-glass='on'] .prose,
+:root[data-glass='on'] button,
+:root[data-glass='on'] .ds-bubble {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Fallback when backdrop filtering is unsupported: solid-ish but still soft. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-glass='on'] .ds-workbench-shell,
+  :root[data-glass='on'] .ds-workbench-card,
+  :root[data-glass='on'] .ds-sidebar-shell,
+  :root[data-glass='on'] .ds-topbar-surface,
+  :root[data-glass='on'] .ds-stage-surface,
+  :root[data-glass='on'] .ds-settings-surface,
+  :root[data-glass='on'] .ds-composer-shell {
+    background-color: color-mix(
+      in srgb,
+      var(--ds-glass-tint, #0f172a) calc(min(0.94, var(--ds-glass-opacity, 0.62) + 0.28) * 100%),
+      transparent
+    ) !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+/* Respect reduced motion: never run the background drift animation. */
+@media (prefers-reduced-motion: reduce) {
+  .ds-workbench-shell::before,
+  .ds-settings-surface::before {
+    animation: none !important;
+  }
+}

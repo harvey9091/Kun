@@ -273,4 +273,19 @@ describe('orphaned application Manager recovery', () => {
       .rejects.toThrow('cancelled')
     expect(identity.runtimeProcessIsAlive(f.child.pid!)).toBe(true)
   })
+
+  it('recovers a crashed session whose owner birth identity is unverifiable, stopping only verified leftover processes', async () => {
+    // Windows PID reuse or a native identity query that fails under load makes the
+    // exited owner 'unknown'. Recover Kun must proceed (not dead-end) yet still
+    // require a positive identity before signalling, so saved data is untouched.
+    const f = await fixture()
+    const original = identity.runtimeProcessOwnerState
+    vi.spyOn(identity, 'runtimeProcessOwnerState').mockImplementation((pid, record) =>
+      pid === f.owner.ownerPid ? 'unknown' : original(pid, record))
+    await f.recover()
+    expect(identity.runtimeProcessIsAlive(f.child.pid!)).toBe(false)
+    expect(await readManagerHandoffDiscoveryStrict(f.profile.controlDir)).toBeNull()
+    expect(await readFile(join(f.profile.dataDir, 'history.json'), 'utf8')).toBe('saved conversations')
+    expect(await readFile(f.profile.settingsPath, 'utf8')).toBe('saved settings')
+  })
 })

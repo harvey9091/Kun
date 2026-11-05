@@ -52,11 +52,13 @@ import type { RegisterAppIpcHandlersOptions } from './app-ipc-handler-options'
 import { bundledSkillsDirectory } from '../bundled-skill-resources'
 import { parseIpcPayload, pathExists } from './app-ipc-handler-utils'
 import { registerAppConfirmationIpcHandlers } from './register-app-confirmation-ipc'
+import { registerAppearanceImageIpcHandlers } from './register-appearance-image-ipc'
 
 export function registerAppWorkspaceIpcHandlers(options: RegisterAppIpcHandlersOptions): void {
   const { store, getMainWindow } = options
   const nativeDialogs = options.nativeDialogs ?? new NativeDialogCoordinator()
   registerAppConfirmationIpcHandlers(options, nativeDialogs)
+  registerAppearanceImageIpcHandlers(options)
   ipcMain.handle('workspace:pick-directory', async (event, defaultPath: unknown): Promise<WorkspacePickResult> => {
     const report = captureDesktopAnalytics(event)
     const normalizedDefaultPath = parseIpcPayload(

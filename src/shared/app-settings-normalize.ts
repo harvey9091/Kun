@@ -60,6 +60,11 @@ import {
 } from './app-settings-remote'
 import { normalizeDarkUiColors } from './app-settings-dark-ui'
 import { normalizeColorPaletteSettings } from './app-settings-color-palette'
+import {
+  normalizeBackgroundSettings,
+  normalizeGlassSettings
+} from './app-settings-appearance'
+import { normalizeThemePresets } from './app-settings-appearance-presets'
 
 export function normalizeAppSettings(settings: AppSettingsV1): AppSettingsV1 {
   const migrated = shouldMigrateLegacySettings(settings)
@@ -81,6 +86,9 @@ export function normalizeAppSettings(settings: AppSettingsV1): AppSettingsV1 {
     remote?: RemoteAccessSettingsPatchV1
     darkUiColors?: Parameters<typeof normalizeDarkUiColors>[0]
     colorPalette?: Parameters<typeof normalizeColorPaletteSettings>[0]
+    glass?: Parameters<typeof normalizeGlassSettings>[0]
+    background?: Parameters<typeof normalizeBackgroundSettings>[0]
+    themePresets?: Parameters<typeof normalizeThemePresets>[0]
   }
   const providerSettings = normalizeModelProviderSettings(maybeSettings.provider)
   const rawKun = maybeSettings.agents?.kun
@@ -129,6 +137,10 @@ export function normalizeAppSettings(settings: AppSettingsV1): AppSettingsV1 {
     homeGlyphRipple: maybeSettings.homeGlyphRipple !== false,
     darkUiColors: normalizeDarkUiColors(maybeSettings.darkUiColors),
     colorPalette: normalizeColorPaletteSettings(maybeSettings.colorPalette, maybeSettings.darkUiColors),
+    glass: normalizeGlassSettings(maybeSettings.glass),
+    background: normalizeBackgroundSettings(maybeSettings.background),
+    themePresets: normalizeThemePresets(maybeSettings.themePresets),
+    activePresetId: typeof maybeSettings.activePresetId === 'string' ? maybeSettings.activePresetId : '',
     provider: providerSettings,
     agents: kunSettingsEnvelope(mergeKunRuntimeSettings(defaultKunRuntimeSettings(), {
       ...runtime,

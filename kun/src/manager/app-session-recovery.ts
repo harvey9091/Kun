@@ -2,7 +2,7 @@ import { readFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { z } from 'zod'
 import { sameAppSessionOwner } from '../contracts/app-session-owner.js'
-import { requireRuntimeProcessIdentity, runtimeProcessIsAlive } from '../server/runtime-process-identity.js'
+import { requireRuntimeProcessIdentity, runtimeProcessIsAlive, runtimeProcessOwnerState } from '../server/runtime-process-identity.js'
 import {
   AppSessionConflictError, AppSessionParticipantSchema, AppSessionReservationSchema,
   canonicalSessionPath, type AppSessionReservation
@@ -52,10 +52,25 @@ export async function retireOrphanedAppSessionManager(input: AppSessionReservati
     const assertOwnerExited = () => {
       input.signal?.throwIfAborted()
       const owner = reservation.owner
-      if (runtimeProcessIsAlive(owner.ownerPid, {
+      // Only a provably live owner blocks recovery. A recycled PID ('reused'), a
+      // dead PID, or a birth identity we cannot verify ('unknown') is not proof
+      // that the application is running, so recovery must not dead-end on it.
+      // Stopping any process below still requires a positive birth-identity match
+      // in verifySignalTarget, so an unverifiable owner is never terminated here.
+      if (runtimeProcessOwnerState(owner.ownerPid, {
         startedAt: owner.ownerStartedAt, processIdentity: owner.ownerProcessIdentity
-      })) throw new AppSessionConflictError(profile.dataDir, `application pid ${owner.ownerPid} is still running; close it before retrying`)
+      }) === 'alive') {
+        throw new AppSessionConflictError(profile.dataDir, `application pid ${owner.ownerPid} is still running; close it before retrying`)
+      }
     }
+    try {
+      console.info('[app-session] recovery check', JSON.stringify({
+        action: 'owner-state', ownerKind: reservation.owner.ownerKind, ownerPid: reservation.owner.ownerPid,
+        ownerState: runtimeProcessOwnerState(reservation.owner.ownerPid, {
+          startedAt: reservation.owner.ownerStartedAt, processIdentity: reservation.owner.ownerProcessIdentity
+        })
+      }))
+    } catch { /* diagnostics must never break recovery */ }
     assertOwnerExited()
     const snapshots = await Promise.all(paths.map(readParticipants))
     const live = verifiedLiveParticipants(snapshots)

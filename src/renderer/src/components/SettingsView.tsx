@@ -215,6 +215,8 @@ export function SettingsView(): ReactElement {
   const formCursorSpotlight = form?.cursorSpotlight
   const formCursorSpotlightColor = form?.cursorSpotlightColor
   const formDarkUiColors = form?.darkUiColors
+  const formGlass = form?.glass
+  const formBackground = form?.background
   const settingsPlatform = typeof window !== 'undefined' ? window.kunGui?.platform ?? '' : ''
   const settingsHomeDir = typeof window !== 'undefined' ? window.kunGui?.homeDir ?? '' : ''
   const categoryTitle = t(settingsCategoryLabelKey(category))
@@ -260,7 +262,7 @@ export function SettingsView(): ReactElement {
     setWriteDebugError, extensionContributionSnapshotReady, extensionSettingsAvailable,
     settingsScrollerRef, persistedSettingsRef, formTheme, formUiFontScale,
     formChatContentMaxWidthPx, writeTypography, formCursorSpotlight, formCursorSpotlightColor,
-    formDarkUiColors
+    formDarkUiColors, formGlass, formBackground
   })
 
   useSettingsRouteSynchronization({
@@ -269,9 +271,14 @@ export function SettingsView(): ReactElement {
 
   useEffect(() => {
     return () => {
+      // Unmount-only teardown: clear the timers and flush the edit that exist at
+      // this moment, so each must read the live `.current` rather than a mount snapshot.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (saveTimer.current) window.clearTimeout(saveTimer.current)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (statusTimer.current) window.clearTimeout(statusTimer.current)
       // Persist any debounced edit that hasn't been flushed yet (issue #602).
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       flushOnUnmountRef.current()
     }
   }, [])

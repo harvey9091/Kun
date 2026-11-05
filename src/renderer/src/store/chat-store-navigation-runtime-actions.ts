@@ -12,6 +12,7 @@ import {
   applyWriteTypography
 } from '../lib/apply-theme'
 import { applyColorPalette, migrateLegacyRetromaPalette } from '../lib/color-palettes'
+import { applyBackground, applyGlass } from '../lib/apply-appearance'
 import { formatWorkspacePickerError } from '../lib/format-workspace-picker-error'
 import { formatRuntimeError, getRuntimeErrorCode } from '../lib/format-runtime-error'
 import { isAppQuitting, markAppQuitting } from '../lib/app-quitting'
@@ -305,6 +306,8 @@ export function createNavigationRuntimeActions(
           migrateLegacyRetromaPalette(settings.colorPalette, (patch) => rendererRuntimeClient.setSettings(patch)),
           settings.darkUiColors
         )
+        applyGlass(settings.glass)
+        applyBackground(settings.background)
         if (settings.write?.typography) applyWriteTypography(settings.write.typography)
         await get().applyI18nFromSettings(readRemoteLocaleOverride() ?? settings.locale)
         if (!appQuittingUnsubscribe && typeof window.kunGui.onAppQuitting === 'function') {

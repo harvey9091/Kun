@@ -7,6 +7,7 @@ import { rendererRuntimeClient } from '../agent/runtime-client'
 import { extensionWorkbenchClient } from '../extensions/extension-workbench-client'
 import { readRemoteLocaleOverride } from '../lib/remote-mobile'
 import { applyColorPalette } from '../lib/color-palettes'
+import { applyBackground, applyGlass } from '../lib/apply-appearance'
 import {
   effectiveCodeWorkspaceRoot,
   readRemovedCodeWorkspaces
@@ -535,6 +536,8 @@ export function createAppActions(options: CreateAppActionsOptions): Pick<
       applyCursorSpotlightColor(settings.cursorSpotlightColor)
       applyDarkUiColors(settings.darkUiColors)
       applyColorPalette(settings.colorPalette, settings.darkUiColors)
+      applyGlass(settings.glass)
+      applyBackground(settings.background)
       if (settings.write?.typography) applyWriteTypography(settings.write.typography)
       set({
         workspaceRoot,
