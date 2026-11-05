@@ -184,9 +184,9 @@ function buildDetectionPrompt(now: Date): string {
   ].join('\n\n')
 }
 
-function detectionModel(model: string): string {
+function detectionModel(model: string, fallback: string): string {
   const trimmed = model.trim()
-  return trimmed && trimmed !== DEFAULT_SCHEDULE_MODEL ? trimmed : 'deepseek-v4-flash'
+  return trimmed && trimmed !== DEFAULT_SCHEDULE_MODEL ? trimmed : (fallback.trim() || DEFAULT_SCHEDULE_MODEL)
 }
 
 function buildDetectionRequest(input: {
@@ -336,7 +336,7 @@ export async function detectClawScheduledTaskRequest(
   if (!provider) return null
   if (routesTextThroughRuntime()) {
     const result = await requestRuntimeModelText({ purpose: 'schedule-detection', providerId: provider.id,
-      model: detectionModel(modelHint), messages: [{ role: 'system', content: buildDetectionPrompt(now) },
+      model: detectionModel(modelHint, runtime.model), messages: [{ role: 'system', content: buildDetectionPrompt(now) },
         { role: 'user', content: sourceText }], jsonMode: true, temperature: 0,
       maxOutputTokens: 1200, timeoutMs: DETECTOR_TIMEOUT_MS })
     return result.ok ? normalizeDetectedRequest(parseDetectionPayload(result.text), sourceText, now) : null
@@ -344,7 +344,7 @@ export async function detectClawScheduledTaskRequest(
   const usesRuntimeRoute = provider.id === runtimeProvider.id
   const apiKey = usesRuntimeRoute ? runtime.apiKey.trim() : provider.apiKey.trim()
   if (!apiKey) return null
-  const model = detectionModel(modelHint)
+  const model = detectionModel(modelHint, runtime.model)
   const responsesMode = modelProviderModelProfile(provider, model)?.responsesMode
   const endpointFormat = usesRuntimeRoute ? runtime.endpointFormat : provider.endpointFormat
   const baseUrl = usesRuntimeRoute

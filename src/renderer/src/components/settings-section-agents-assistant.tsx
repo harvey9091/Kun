@@ -76,8 +76,8 @@ export function AgentsAssistantSettingsPanel({ view }: { view: Record<string, an
             <button className={settingsButtonClass()}
               type="button"
               onClick={() => {
-                updateKun({ model: DEFAULT_KUN_MODEL })
-                persistComposerModel(DEFAULT_KUN_MODEL)
+                updateKun({ model: kun.model })
+                persistComposerModel(kun.model)
               }}
             >
               {t('kunResetDefaultModelAction', { model: DEFAULT_KUN_MODEL })}
