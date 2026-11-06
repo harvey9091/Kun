@@ -81,7 +81,10 @@ describe('detectClawScheduledTaskRequest endpoint formats', () => {
     expect(calls[0]).toMatchObject({
       url: 'https://model.example/v1/responses',
       body: {
-        model: 'deepseek-v4-flash',
+        // 'deepseek-v4-flash' is DEFAULT_SCHEDULE_MODEL (the "auto" sentinel), so
+        // detection resolves it to the runtime default model (DEFAULT_KUN_MODEL),
+        // per a89c12108 "composer model fallback respects auto default".
+        model: 'deepseek-v4-pro',
         input: 'remind me tomorrow to stretch',
         max_output_tokens: 300,
         text: { format: { type: 'json_object' } }

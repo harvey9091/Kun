@@ -271,15 +271,12 @@ export function SettingsView(): ReactElement {
 
   useEffect(() => {
     return () => {
-      // Unmount-only teardown: clear the timers and flush the edit that exist at
-      // this moment, so each must read the live `.current` rather than a mount snapshot.
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      /* eslint-disable react-hooks/exhaustive-deps -- unmount teardown must read the live
+         `.current`; these timer/flush targets change after mount, so a snapshot would leak. */
       if (saveTimer.current) window.clearTimeout(saveTimer.current)
-      // eslint-disable-next-line react-hooks/exhaustive-deps
       if (statusTimer.current) window.clearTimeout(statusTimer.current)
-      // Persist any debounced edit that hasn't been flushed yet (issue #602).
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      flushOnUnmountRef.current()
+      flushOnUnmountRef.current() // persist any debounced edit not yet flushed (issue #602)
+      /* eslint-enable react-hooks/exhaustive-deps */
     }
   }, [])
 
